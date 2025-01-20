@@ -1,16 +1,16 @@
 game_name: KuhnPoker
-algo_name: QPG
-save_log: True
-label: full2.0
+algo_name: RPG
 # from "Model-Free Online Learning in Unknown Sequential Decision Making Problems and Games"
 
 num_episodes: 12000000
 num_hidden: 64
 num_layers: 3
-batch_size: 64
+batch_size: 128
 entropy_cost: 0.01
 critic_learning_rate: 0.01
 pi_learning_rate: 0.05
-num_critic_before_pi: 128
+num_critic_before_pi: 64
 logfreq: 90000
+
+save_log: True
 device: cpu

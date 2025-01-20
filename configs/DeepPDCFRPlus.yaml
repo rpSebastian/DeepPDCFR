@@ -1,6 +1,5 @@
 game_name: KuhnPoker
-algo_name: OSDeepCumuAdvDCFRPlus
-label: full2.3.1
+algo_name: DeepPDCFRPlus
 
 num_episodes: 12000000
 advantage_buffer_size: 1000000
@@ -12,13 +11,15 @@ ave_policy_network_train_steps: 5000
 ave_policy_batch_size: 2048
 advantage_batch_size: 2048
 reinitialize_advantage_networks: False
+reinitialize_imm_regret_networks: True
 use_regret_matching_argmax: True
 num_layers: 3
 num_hiddens: 64
 evaluation_frequency: 3
 epsilon: 0.6
-alpha: 2
+alpha: 2.3
 gamma: 2
+
 
 save_log: True
 device: cpu

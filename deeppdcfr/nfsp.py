@@ -23,11 +23,10 @@ tf.disable_v2_behavior()
 from open_spiel.python import policy, rl_environment
 from open_spiel.python.algorithms import exploitability, nfsp
 
-from xhlib.logger import Logger
-from xhlib.utils import set_seed
+from deeppdcfr.logger import Logger
+from deeppdcfr.utils import set_seed, play_n_games_against_random, play_n_poker_games_against_random
 
-from xdcfr.game import read_game_config
-from xdcfr.utils import play_n_games_against_random, play_n_poker_games_against_random
+from deeppdcfr.game import read_game_config
 
 
 class NFSP:

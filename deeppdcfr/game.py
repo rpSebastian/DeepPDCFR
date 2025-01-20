@@ -2,9 +2,8 @@ from pathlib import Path
 
 import pyspiel
 import tabulate
-from xhlib.utils import log_time_func, print_time
 
-from xdcfr.utils import SpielGame, SpielState
+from deeppdcfr.utils import SpielGame, SpielState
 import multiprocessing
 
 
@@ -277,44 +276,8 @@ class UniversalPoker(GameConfig):
                 del self.params[key]
 
 
-class UniversalKuhn(UniversalPoker):
+class FHP(UniversalPoker):
     def __init__(self):
-        super().__init__(
-            num_players=2,
-            betting="limit",
-            blind="1 1",
-            raise_size="1",
-            first_player="1",
-            max_raises="1",
-            num_rounds=1,
-            num_suits=1,
-            num_ranks=3,
-            num_hole_cards=1,
-            num_board_cards="0",
-        )
-
-
-class UniversalLeduc(UniversalPoker):
-    def __init__(self, num_ranks=3):
-        super().__init__(
-            num_players=2,
-            betting="limit",
-            blind="1 1",
-            raise_size="2 4",
-            first_player="1 1",
-            max_raises="2 2",
-            num_rounds=2,
-            num_suits=2,
-            num_ranks=num_ranks,
-            num_hole_cards=1,
-            num_board_cards="0 1",
-            large_game=True,
-        )
-        self.name = "UniversalLeduc{}".format(num_ranks)
-
-
-class UniversalFHP(UniversalPoker):
-    def __init__(self, num_suits=4, num_ranks=13):
         super().__init__(
             num_players=2,
             betting="limit",
@@ -323,16 +286,16 @@ class UniversalFHP(UniversalPoker):
             first_player="1 2",
             max_raises="3 3",
             num_rounds=2,
-            num_suits=num_suits,
-            num_ranks=num_ranks,
+            num_suits=4,
+            num_ranks=13,
             num_hole_cards=2,
             num_board_cards="0 3",
             large_game=True,
         )
-        self.name = "UniversalFHP{}_{}".format(num_suits, num_ranks)
+        self.name = "FHP"
 
 
-class UniversalHULH(UniversalPoker):
+class HULH(UniversalPoker):
     def __init__(self):
         super().__init__(
             num_players=2,
@@ -354,21 +317,13 @@ def get_game_configs() -> list[GameConfig]:
     game_configs = [
         KuhnPoker(),
         LeducPoker(),
-        LeducPokerIso(),
-        *[GoofSpiel(num_cards=cards) for cards in [3, 4, 5, 6, 7]],
-        *[GoofSpiel(num_cards=cards, imp_info=True) for cards in [3, 4, 5, 6, 7]],
-        *[LiarsDice(dice_sides=sides, num_dice=1) for sides in [3, 4, 5, 6]],
+        *[GoofSpiel(num_cards=cards) for cards in [5, 6]],
+        *[GoofSpiel(num_cards=cards, imp_info=True) for cards in [5, 6]],
+        *[LiarsDice(dice_sides=sides, num_dice=1) for sides in [5, 6]],
         BattleShip(board_width=3, board_height=2, num_shots=3),
         BattleShip(board_width=2, board_height=2, num_shots=3),
-        PhantomTTT(),
-        *[DarkHex(board_size=board_size) for board_size in [1, 2, 3, 4, 5]],
-        UniversalKuhn(),
-        *[UniversalLeduc(num_ranks=num_ranks) for num_ranks in [3, 5, 9, 13]],
-        *[
-            UniversalFHP(num_suits=num_suits, num_ranks=num_ranks)
-            for num_suits, num_ranks in [(2, 5), (2, 13), (4, 13)]
-        ],
-        UniversalHULH(),
+        FHP(),        
+        HULH(),
     ]
     return game_configs
 
@@ -387,37 +342,11 @@ def print_game_info(game_config, size=False, visulize=False):
     except Exception:
         observation_tensor_size = None
 
-    row = [
-        game_config,
-        game.num_distinct_actions(),
-        game.max_utility(),
-        game.min_utility(),
-        game_config.large_game,
-        game.max_game_length(),
-        game.max_history_length(),
-        game.information_state_tensor_size(),
-        game.max_move_number(),
-        observation_tensor_size,
-    ]
-
-    headers = [
-        "Game Config",
-        "Num Actions",
-        "Max Utility",
-        "Min Utility",
-        "Is Large Game",
-        "Game Length",
-        "Max History Length",
-        "Information State Tensor Size",
-        "Max Move Number",
-        "Observation Tensor Size",
-    ]
-
     headers = ["Game Config"]
     row = [game_config]
 
     if size:
-        if ["FHP" in game_config.name or "HULH" in game_config.name]:
+        if "FHP" in game_config.name or "HULH" in game_config.name:
             row += game_config.get_holdem_size()
         else:
             row += game_config.get_size()
@@ -428,126 +357,30 @@ def print_game_info(game_config, size=False, visulize=False):
 
     return row, headers
 
-
-def test_game_info():
-    game_configs = get_game_configs()
-    table = []
-    headers = None
-    for game_config in game_configs:
-        row, headers = print_game_info(game_config)
-        table.append(row)
-    if headers:
-        print(tabulate.tabulate(table, headers=headers, tablefmt="grid"))
-
-
-def test_kuhn_poker():
-    kuhn_config = KuhnPoker()
-    universal_kuhn = UniversalKuhn()
-    table = []
-    for config in [kuhn_config, universal_kuhn]:
-        row, headers = print_game_info(config, size=True, visulize=False)
-        table.append(row)
-    print(tabulate.tabulate(table, headers=headers, tablefmt="grid"))
-
-    print(
-        kuhn_config.load_game()
-        .new_initial_state()
-        .child(0)
-        .child(1)
-        .child(1)
-        .information_state_tensor()
-    )
-    print(
-        kuhn_config.load_game()
-        .new_initial_state()
-        .child(0)
-        .child(1)
-        .child(1)
-        .observation_tensor()
-    )
-    print(
-        universal_kuhn.load_game()
-        .new_initial_state()
-        .child(0)
-        .child(1)
-        .child(1)
-        .information_state_tensor()
-    )
-    print(
-        universal_kuhn.load_game()
-        .new_initial_state()
-        .child(0)
-        .child(1)
-        .child(1)
-        .observation_tensor()
-    )
-
-
-def test_leduc_poker():
-    table = []
-    for config in [
-        LeducPoker(),
-        UniversalLeduc(3),
-        UniversalLeduc(5),
-        UniversalLeduc(9),
-        UniversalLeduc(13),
-    ]:
-        row, headers = print_game_info(config, size=True, visulize=False)
-        table.append(row)
-    print(tabulate.tabulate(table, headers=headers, tablefmt="grid"))
-
-
-def test_holdem():
-    table = []
-    for config in [
-        UniversalFHP(2, 5),
-        UniversalFHP(2, 13),
-        UniversalFHP(),
-        UniversalHULH(),
-    ]:
-        row, headers = print_game_info(config, size=False, visulize=False)
-        table.append(row)
-    print(tabulate.tabulate(table, headers=headers, tablefmt="grid"))
-
-    table = []
-    for config in [UniversalFHP(2, 4), UniversalFHP(2, 5)]:
-        log_time_func(config.name)
-        row, headers = print_game_info(config, size=True, visulize=False)
-        table.append(row)
-        log_time_func(config.name, end=True)
-    print(tabulate.tabulate(table, headers=headers, tablefmt="grid"))
-    print_time()
-
-
 def print_game():
     game_names = [
-        # "KuhnPoker",
-        # "LeducPoker",
-        # "LiarsDice5",
-        # "LiarsDice6",
-        # "GoofSpiel5",
-        # "GoofSpiel6",
-        # "GoofSpielImp5",
-        # "GoofSpielImp6",
-        # "Battleship_22_3",
-        # "Battleship_32_3",
-        "UniversalFHP4_13",
-        # "UniversalHULH",
+        "KuhnPoker",
+        "LeducPoker",
+        "LiarsDice5",
+        "LiarsDice6",
+        "GoofSpiel5",
+        "GoofSpiel6",
+        "GoofSpielImp5",
+        "GoofSpielImp6",
+        "Battleship_22_3",
+        "Battleship_32_3",
+        # "FHP",
+        # "HULH",
     ]
     table = []
     for game_name in game_names:
+        print(game_name)
         game_config = read_game_config(game_name)
         row, headers = print_game_info(game_config, size=True, visulize=False)
         table.append(row)
-        print(tabulate.tabulate(table, headers=headers, tablefmt="grid"))
+    print(tabulate.tabulate(table, headers=headers, tablefmt="grid"))
 
 
 if __name__ == "__main__":
-    # game_config = read_game_config("UniversalFHP4_13")
-    # print(game_config.get_holdem_size())
-    # print(game_config.get_size())
     print_game()
-    # test_game_info()
-    # test_kuhn_poker()
-    # test_leduc_poker()
-    # test_holdem()
+    

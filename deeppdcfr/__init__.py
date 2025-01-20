@@ -7,6 +7,6 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 from .nfsp import *
 from .os_deep_cfr import *
-from .os_deep_cumu_cfr import *
-from .os_deep_cumu_cfr_variants import *
+from .os_deep_cumu_adv import *
+from .os_deep_cumu_adv_variants import *
 from .policy_gradient import *

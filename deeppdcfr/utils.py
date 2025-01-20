@@ -1,4 +1,17 @@
+import datetime
+import importlib
+import inspect
+import pickle
 import random
+import time
+from collections import defaultdict
+from copy import deepcopy
+from pathlib import Path
+from typing import Any, Callable, Dict, Type
+from difflib import SequenceMatcher
+import numpy as np
+import torch
+
 from typing import Any, Callable, Union
 
 import numpy as np
@@ -199,34 +212,6 @@ class MaybeBetOpponent:
         return policy
 
 
-def test_play_against_random():
-    from xdcfr.game import read_game_config
-
-    game_config = read_game_config("UniversalFHP2_5")
-    game = game_config.load_game()
-
-    def policy(state: SpielState):
-        return {a: 1 / len(state.legal_actions()) for a in state.legal_actions()}
-
-    reward = play_n_poker_games_against_random(game, policy, 10000)
-    print(reward)
-
-
-import datetime
-import importlib
-import inspect
-import pickle
-import random
-import time
-from collections import defaultdict
-from copy import deepcopy
-from pathlib import Path
-from typing import Any, Callable, Dict, Type
-from difflib import SequenceMatcher
-import numpy as np
-import torch
-
-
 def load_module(name):
     if ":" in name:
         mod_name, attr_name = name.split(":")
@@ -244,43 +229,6 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
-
-
-def init_cuda():
-    a = np.array([100, 500])
-    a_cuda = torch.from_numpy(a).cuda()
-
-
-class Timer:
-    def __init__(self):
-        self.func_single_time = defaultdict(float)
-        self.func_total_time = defaultdict(float)
-
-    def timer(self, func):
-        def wrap_func(*args, **kwargs):
-            t1 = time.time()
-            self.active = True
-            result = func(*args, **kwargs)
-            self.activate = False
-            t2 = time.time()
-            if not self.activate:
-                self.func_single_time[func.__name__] = t2 - t1
-                self.func_total_time[func.__name__] += t2 - t1
-            return result
-
-        return wrap_func
-
-    def reset(self):
-        self.func_single_time = defaultdict(float)
-        self.func_total_time = defaultdict(float)
-
-    def print_total(self):
-        for key, value in self.func_total_time.items():
-            print(f"{key}: {value:.4f}", end=" ")
-        print()
-
-
-timer = Timer()
 
 
 def save_pickle(data, file):
@@ -344,60 +292,6 @@ def run_method(
     result = method(**params)
     return result
 
-
-g_log_time = defaultdict(list)
-
-
-def log_time(log_text=None):
-    def decorator(func):
-        def wrapper(*args, **kws):
-            start = datetime.datetime.now()
-            result = func(*args, **kws)
-            end = datetime.datetime.now()
-            time = (end - start).total_seconds()
-            log_key = log_text or func.__name__
-            g_log_time[log_key].append(time)
-            return result
-
-        return wrapper
-
-    return decorator
-
-
-def log_time_func(text, end=False):
-    now = datetime.datetime.now()
-    if (
-        text in g_log_time
-        and len(g_log_time[text]) > 0
-        and isinstance(g_log_time[text][-1], datetime.datetime)
-    ):
-        start = g_log_time[text][-1]
-        t = (now - start).total_seconds()
-        g_log_time[text][-1] = t
-    if not end:
-        g_log_time[text].append(datetime.datetime.now())
-
-
-def print_time(print_directly=True):
-    info = []
-    for item in g_log_time.items():
-        if len(item) <= 1 or len(item[1]) == 0 or len(item[0]) == 0:
-            continue
-        mean = np.mean(item[1])
-        max = np.max(item[1])
-        info.append(
-            "{} | mean:{:.3f}ms, max:{:.3f}ms, times:{}".format(
-                item[0], mean * 1000, max * 1000, len(item[1])
-            )
-        )
-        g_log_time[item[0]] = []
-    info = "\n".join(info)
-    if print_directly:
-        print(info)
-    else:
-        return info
-
-
 def get_host_ip():
     import socket
 
@@ -410,12 +304,7 @@ def get_host_ip():
 
     return ip
 
-
 def get_server_id():
     ip = get_host_ip()
     server_id = int(ip.split(".")[-1])
     return server_id
-
-if __name__ == "__main__":
-    test_play_against_random()
-

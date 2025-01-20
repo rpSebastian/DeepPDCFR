@@ -1,19 +1,18 @@
 import math
 import random
-from typing import Optional
 
 import numpy as np
-import optuna
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from scipy import stats
-from xhlib.logger import Logger
-from xhlib.utils import init_object, set_seed
+from deeppdcfr.logger import Logger
 
-from xdcfr.game import read_game_config
-from xdcfr.utils import (
+from deeppdcfr.game import read_game_config
+from deeppdcfr.utils import (
+    set_seed,
     SpielState,
     evalute_explotability,
     play_n_games_against_random,
@@ -21,7 +20,7 @@ from xdcfr.utils import (
 )
 
 
-class OSDeepCumuCFR:
+class DeepCumuAdv:
     def __init__(
         self,
         game_name,
@@ -113,37 +112,10 @@ class OSDeepCumuCFR:
             for _ in range(self.num_players)
         ]
 
-    def solve(
-        self, is_search_hyper: bool = False, trial: Optional[optuna.Trial] = None
-    ):
-        self.is_search_hyper = is_search_hyper
-        self.trial = trial
-
+    def solve(self):
         self.evaluate()
         for _ in range(self.num_iterations):
             self.iteration()
-
-        if self.is_search_hyper:
-            self.train_average_policy()
-            if self.play_against_random:
-                if self.poker_game:
-                    reward = play_n_poker_games_against_random(
-                        self.game,
-                        self.ave_policy_trainer.action_probabilities,
-                        self.num_random_games,
-                    )
-                else:
-                    reward = play_n_games_against_random(
-                        self.game,
-                        self.ave_policy_trainer.action_probabilities,
-                        self.num_random_games,
-                    )
-                return -reward
-            else:
-                exp = evalute_explotability(
-                    self.game, self.ave_policy_trainer.action_probabilities
-                )
-                return exp
 
     def iteration(self):
         self.num_iteration += 1
@@ -163,8 +135,6 @@ class OSDeepCumuCFR:
         for _ in range(self.num_traversals):
             self.episode += 1
             self.dfs(self.root_node, player)
-        # self.logger.record("regret buffer", self.regret_trainers[player].buffer)
-        # self.logger.dump(step=0)
 
     def train_regret(self, player):
         if self.reinitialize_advantage_networks:
@@ -196,201 +166,13 @@ class OSDeepCumuCFR:
                 )
             self.logger.record("reward", reward)
             self.logger.dump(step=self.episode)
-            if self.is_search_hyper and self.trial is not None:
-                self.trial.report(-reward, self.episode)
-                # if self.trial.should_prune():
-                #     raise optuna.TrialPruned()
         else:
             exp = evalute_explotability(
                 self.game, self.ave_policy_trainer.action_probabilities
             )
             self.logger.record("exp", exp)
             self.logger.dump(step=self.episode)
-            if self.is_search_hyper and self.trial is not None:
-                self.trial.report(exp, self.episode)
-                # if self.trial.should_prune():
-                #     raise optuna.TrialPruned()
 
-    def dfs(self, s, traverser, my_reach=1.0, opp_reach=1.0, sample_reach=1.0):
-        self.nodes_touched += 1
-        player = s.current_player()
-        if player == -4:
-            return s.returns()[traverser] / self.max_utility
-        if player == -1:
-            actions, probs = zip(*s.chance_outcomes())
-            aid = np.random.choice(range(len(actions)), p=probs)
-            action, prob = actions[aid], probs[aid]
-            return self.dfs(
-                s.child(action),
-                traverser,
-                my_reach,
-                opp_reach * prob,
-                sample_reach * prob,
-            )
-        legal_actions = s.legal_actions()
-        policy = self.regret_trainers[player].get_policy(s, self.num_iteration)
-        num_actions = s.num_distinct_actions()
-        uniform_policy = np.array(s.legal_actions_mask()) / len(s.legal_actions())
-        sample_policy = (
-            uniform_policy * self.epsilon + policy * (1 - self.epsilon)
-            if player == traverser
-            else policy
-        )
-        sample_policy /= sample_policy.sum()
-        action = np.random.choice(range(num_actions), p=sample_policy)
-        sample_prob, prob = (
-            sample_policy[action].item(),
-            policy[action].item(),
-        )
-
-        if player == 1 - traverser:
-            self.ave_policy_trainer.add_data(
-                s.information_state_tensor(player),
-                policy,
-                s.legal_actions_mask(),
-                self.num_iteration,
-            )
-            return self.dfs(
-                s.child(action),
-                traverser,
-                my_reach,
-                opp_reach * prob,
-                sample_reach * sample_prob,
-            )
-        else:
-            q_values = np.zeros_like(policy)
-            q_values[action] = (
-                self.dfs(
-                    s.child(action),
-                    traverser,
-                    my_reach * prob,
-                    opp_reach,
-                    sample_reach * sample_prob,
-                )
-                / sample_prob
-            )
-            value = np.dot(q_values, policy)
-            cf_regrets = np.zeros_like(policy)
-            cf_regrets[legal_actions] = -value * opp_reach / sample_reach
-            cf_regrets[action] += q_values[action] * opp_reach / sample_reach
-            self.regret_trainers[player].add_data(
-                s.information_state_tensor(player),
-                cf_regrets,
-                s.legal_actions_mask(),
-                self.num_iteration,
-            )
-            return value
-
-    def load_game(self):
-        game_config = read_game_config(self.game_name)
-        self.poker_game = game_config.poker
-        if game_config.large_game:
-            if not self.play_against_random:
-                self.logger.warn("The game is too large, play against random instead.")
-            self.play_against_random = True
-
-        game = game_config.load_game()
-        return game
-
-    @classmethod
-    def search_hyper(cls, game_name="KuhnPoker", device="cpu"):
-        cls.game_name = game_name
-        cls.device = device
-        study_name = "{}_{}".format(game_name, cls.__name__)
-        storage_name = "mysql+pymysql://xuhang:111111@10.10.100.51/sweep"
-        study = optuna.create_study(
-            study_name=study_name,
-            storage=storage_name,
-            load_if_exists=True,
-            direction="minimize",
-        )
-        study.optimize(cls.objective, n_trials=100)
-
-    @classmethod
-    def objective(cls, trial):
-        hyper_params = cls.get_hyper_params(trial)
-        obj = init_object(cls, hyper_params, device=cls.device)
-        exp = obj.solve(is_search_hyper=True, trial=trial)
-        return exp
-
-    @classmethod
-    def get_hyper_params(cls, trial: optuna.Trial):
-        raise NotImplemented
-
-
-class VaniOSDeepCumuCFR(OSDeepCumuCFR):
-    def dfs(self, s, traverser, my_reach=1.0, opp_reach=1.0, sample_reach=1.0):
-        self.nodes_touched += 1
-        player = s.current_player()
-        if player == -4:
-            return s.returns()[traverser] / self.max_utility
-        if player == -1:
-            actions, probs = zip(*s.chance_outcomes())
-            aid = np.random.choice(range(len(actions)), p=probs)
-            action, prob = actions[aid], probs[aid]
-            return self.dfs(
-                s.child(action),
-                traverser,
-                my_reach,
-                opp_reach * prob,
-                sample_reach * prob,
-            )
-        legal_actions = s.legal_actions()
-        policy = self.regret_trainers[player].get_policy(s, self.num_iteration)
-        num_actions = s.num_distinct_actions()
-        uniform_policy = np.array(s.legal_actions_mask()) / len(s.legal_actions())
-        sample_policy = (
-            uniform_policy * self.epsilon + policy * (1 - self.epsilon)
-            if player == traverser
-            else policy
-        )
-        sample_policy /= sample_policy.sum()
-        action = np.random.choice(range(num_actions), p=sample_policy)
-        sample_prob, prob = (
-            sample_policy[action].item(),
-            policy[action].item(),
-        )
-
-        if player == 1 - traverser:
-            return self.dfs(
-                s.child(action),
-                traverser,
-                my_reach,
-                opp_reach * prob,
-                sample_reach * sample_prob,
-            )
-        else:
-            q_values = np.zeros_like(policy)
-            q_values[action] = (
-                self.dfs(
-                    s.child(action),
-                    traverser,
-                    my_reach * prob,
-                    opp_reach,
-                    sample_reach * sample_prob,
-                )
-                / sample_prob
-            )
-            value = np.dot(q_values, policy)
-            cf_regrets = np.zeros_like(policy)
-            cf_regrets[legal_actions] = -value * opp_reach / sample_reach
-            cf_regrets[action] += q_values[action] * opp_reach / sample_reach
-            self.regret_trainers[player].add_data(
-                s.information_state_tensor(player),
-                cf_regrets,
-                s.legal_actions_mask(),
-                self.num_iteration,
-            )
-            self.ave_policy_trainer.add_data(
-                s.information_state_tensor(player),
-                policy * my_reach / sample_reach,
-                s.legal_actions_mask(),
-                self.num_iteration,
-            )
-            return value
-
-
-class OSDeepCumuAdv(OSDeepCumuCFR):
     def dfs(
         self,
         s,
@@ -468,116 +250,16 @@ class OSDeepCumuAdv(OSDeepCumuCFR):
             )
             return value
 
-    @classmethod
-    def get_hyper_params(cls, trial: optuna.Trial):
-        game_name = cls.game_name
-        device = cls.device
-        num_episodes = 1000000
-        buffer_size = 1000000
-        regret_learning_rate = trial.suggest_categorical(
-            "regret_learning_rate", [1e-2, 1e-3, 3e-4]
-        )
-        policy_learning_rate = trial.suggest_categorical(
-            "policy_learning_rate", [1e-2, 1e-3, 3e-4]
-        )
-        num_traversals = trial.suggest_categorical(
-            "num_traversals", [500, 1000, 1500, 2000, 5000]
-        )
-        advantage_network_train_steps = trial.suggest_categorical(
-            "advantage_network_train_steps", [500, 1000]
-        )
-        ave_policy_network_train_steps = trial.suggest_categorical(
-            "ave_policy_network_train_steps", [500, 1000, 2000]
-        )
-        ave_policy_batch_size = 2 ** trial.suggest_int(
-            "log2_ave_policy_batch_size", low=10, high=12
-        )
-        advantage_batch_size = -1
-        reinitialize_advantage_networks = False
-        num_hiddens = trial.suggest_categorical("num_hiddens", [64, 128, 256])
-        num_layers = 3
-        evaluation_frequency = 20
-        use_regret_matching_argmax = True
-        return locals()
+    def load_game(self):
+        game_config = read_game_config(self.game_name)
+        self.poker_game = game_config.poker
+        if game_config.large_game:
+            if not self.play_against_random:
+                self.logger.warn("The game is too large, play against random instead.")
+            self.play_against_random = True
 
-
-class VaniOSDeepCumuAdv(OSDeepCumuCFR):
-    def dfs(
-        self,
-        s,
-        traverser,
-        my_reach=1.0,
-        opp_reach=1.0,
-        sample_reach=1.0,
-    ):
-        self.nodes_touched += 1
-        player = s.current_player()
-        if player == -4:
-            return s.returns()[traverser] / self.max_utility
-        if player == -1:
-            actions, probs = zip(*s.chance_outcomes())
-            aid = np.random.choice(range(len(actions)), p=probs)
-            action, prob = actions[aid], probs[aid]
-            return self.dfs(
-                s.child(action),
-                traverser,
-                my_reach,
-                opp_reach * prob,
-                sample_reach * prob,
-            )
-        legal_actions = s.legal_actions()
-        policy = self.regret_trainers[player].get_policy(s, self.num_iteration)
-        num_actions = s.num_distinct_actions()
-        uniform_policy = np.array(s.legal_actions_mask()) / len(s.legal_actions())
-        sample_policy = (
-            uniform_policy * self.epsilon + policy * (1 - self.epsilon)
-            if player == traverser
-            else policy
-        )
-        sample_policy /= sample_policy.sum()
-        action = np.random.choice(range(num_actions), p=sample_policy)
-        sample_prob, prob = (
-            sample_policy[action].item(),
-            policy[action].item(),
-        )
-
-        if player == 1 - traverser:
-            return self.dfs(
-                s.child(action),
-                traverser,
-                my_reach,
-                opp_reach * prob,
-                sample_reach * sample_prob,
-            )
-        else:
-            q_values = np.zeros_like(policy)
-            q_values[action] = (
-                self.dfs(
-                    s.child(action),
-                    traverser,
-                    my_reach * prob,
-                    opp_reach,
-                    sample_reach * sample_prob,
-                )
-                / sample_prob
-            )
-            value = np.dot(q_values, policy)
-            cf_regrets = np.zeros_like(policy)
-            cf_regrets[legal_actions] = -value
-            cf_regrets[action] += q_values[action]
-            self.regret_trainers[player].add_data(
-                s.information_state_tensor(player),
-                cf_regrets,
-                s.legal_actions_mask(),
-                self.num_iteration,
-            )
-            self.ave_policy_trainer.add_data(
-                s.information_state_tensor(player),
-                policy * my_reach / sample_reach,
-                s.legal_actions_mask(),
-                self.num_iteration,
-            )
-            return value
+        game = game_config.load_game()
+        return game
 
 
 class Trainer:

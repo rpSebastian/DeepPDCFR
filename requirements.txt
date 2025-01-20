@@ -1,12 +1,7 @@
-autoflake
-black
-isort
 open_spiel
-pre-commit
-pygraphviz
-pytest
-seaborn
-tqdm
 sacred
-wandb
-tensorboard
+tensorflow==2.15.0
+torch
+tabulate
+pandas
+matplotlib

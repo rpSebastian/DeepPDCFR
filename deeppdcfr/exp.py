@@ -5,7 +5,7 @@ from shutil import SameFileError, copyfile
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import yaml
-from xhlib.utils import get_server_id
+from deeppdcfr.utils import get_server_id
 
 ex = Experiment("default")
 logger = logging.getLogger("mylogger")

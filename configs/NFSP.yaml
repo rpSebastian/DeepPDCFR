@@ -1,7 +1,5 @@
 game_name: KuhnPoker
 algo_name: NFSP
-save_log: True
-label: full2.1
 # from "Multi-Agent Reinforcement Learning In OpenSpiel: A Reproduction Report"
 # # Descrese buffer size to 0.5M, align with deep_cfr
 
@@ -24,4 +22,6 @@ discount_factor: 1.0
 epsilon_decay_duration: 12000000
 epsilon_start: 0.06
 epsilon_end: 0.001
+
+save_log: True
 device: cpu

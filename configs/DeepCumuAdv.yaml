@@ -1,6 +1,5 @@
 game_name: KuhnPoker
-algo_name: OSDeepCumuAdv
-label: full2.3.1
+algo_name: DeepCumuAdv
 
 num_episodes: 12000000
 advantage_buffer_size: 1000000

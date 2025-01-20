@@ -1,14 +1,13 @@
 import os
 
-# 禁止numpy使用多进程
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 
 from pathlib import Path
 
-from xhlib.exp import ServerFileStorageObserver, ex
-from xhlib.logger import Logger
-from xhlib.utils import init_object, load_module, run_method
+from deeppdcfr.exp import ServerFileStorageObserver, ex
+from deeppdcfr.logger import Logger
+from deeppdcfr.utils import init_object, load_module, run_method
 
 
 @ex.config
@@ -35,7 +34,7 @@ def main(algo_name, search_hyper, _config, _run):
     if configs["save_log"]:
         configs["folder"] = configs["folder"] / str(_run._id)
     logger = init_object(Logger, configs)
-    solver_class = load_module("xdcfr:{}".format(algo_name))
+    solver_class = load_module("deeppdcfr:{}".format(algo_name))
 
     if search_hyper:
         run_method(solver_class.search_hyper, configs)
