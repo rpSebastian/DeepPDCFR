@@ -1,14 +1,14 @@
 from pathlib import Path
 import numpy as np
-from xdcfr.game import card_tools
+from deeppdcfr.card_tools import card_tools
 
 
 class Lookup:
     def __init__(self):
-        file = Path(__file__).parents[0].absolute() / "matrix" / "random_board_wp.npy"
+        file = Path(__file__).parents[1].absolute() / "matrix" / "random_board_wp.npy"
         self.random_board_wp = np.load(str(file))
 
-        file = Path(__file__).parents[0].absolute() / "matrix" / "flop_matrix.npy"
+        file = Path(__file__).parents[1].absolute() / "matrix" / "flop_matrix.npy"
         self.flop_matrix = np.load(str(file))
 
     def check(self, a, b):

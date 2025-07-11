@@ -7,7 +7,7 @@ class CardTools:
     suits = list("cdhs")
 
     def __init__(self):
-        file = Path(__file__).parents[0].absolute() / "matrix" / "texas_lookup.npy"
+        file = Path(__file__).parents[1].absolute() / "matrix" / "texas_lookup.npy"
         self.hand_rank = np.load(file)
         self._card_to_id = {}
         self._id_to_card = []

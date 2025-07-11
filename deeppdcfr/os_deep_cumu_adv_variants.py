@@ -11,7 +11,7 @@ from deeppdcfr.utils import SpielState
 
 
 
-class DeepDCFRPlus(DeepCumuAdv):
+class VRDeepDCFRPlus(DeepCumuAdv):
     def __init__(
         self,
         game_name,
@@ -76,7 +76,7 @@ class DeepDCFRPlus(DeepCumuAdv):
 
     def init_regret_trainers(self):
         self.regret_trainers = [
-            DCFRPlusRegretTrainer(
+            VRDCFRPlusRegretTrainer(
                 self.infostate_size,
                 self.action_size,
                 self.network_layers,
@@ -94,7 +94,7 @@ class DeepDCFRPlus(DeepCumuAdv):
 
 
 
-class DeepPDCFRPlus(DeepCumuAdv):
+class VRDeepPDCFRPlus(DeepCumuAdv):
     def __init__(
         self,
         game_name,
@@ -161,7 +161,7 @@ class DeepPDCFRPlus(DeepCumuAdv):
 
     def init_regret_trainers(self):
         self.regret_trainers = [
-            PDCFRPlusRegretTrainer(
+            VRPDCFRPlusRegretTrainer(
                 self.infostate_size,
                 self.action_size,
                 self.network_layers,
@@ -185,7 +185,7 @@ class DeepPDCFRPlus(DeepCumuAdv):
             root_state.information_state_tensor(1),
         )
         history_size = len(history_tensor)
-        self.q_value_trainer = PDCFRPlusQValueTrainer(
+        self.q_value_trainer = VRPDCFRPlusQValueTrainer(
             history_size,
             self.infostate_size,
             self.action_size,
@@ -195,13 +195,11 @@ class DeepPDCFRPlus(DeepCumuAdv):
             self.baseline_batch_size,
             self.baseline_network_train_steps,
             self.logger,
-            self.use_poker_model,
-            self.poker_round,
             self.regret_trainers,
             self.device,
         )
     
-class DCFRPlusRegretTrainer(RegretTrainer):
+class VRDCFRPlusRegretTrainer(RegretTrainer):
     def __init__(
         self,
         input_size: int,
@@ -249,7 +247,7 @@ class DCFRPlusRegretTrainer(RegretTrainer):
         return loss
 
 
-class PDCFRPlusRegretTrainer(RegretTrainer):
+class VRPDCFRPlusRegretTrainer(RegretTrainer):
     def __init__(
         self,
         input_size: int,
@@ -370,7 +368,7 @@ class PDCFRPlusRegretTrainer(RegretTrainer):
         return self.regret_matching(predictive_regrets, legal_actions)
 
 
-class PDCFRPlusQValueTrainer(QValueTrainer):
+class VRPDCFRPlusQValueTrainer(QValueTrainer):
     def train_model(self, T):
         self.model = self.init_model()
         self.target_model = self.init_model()

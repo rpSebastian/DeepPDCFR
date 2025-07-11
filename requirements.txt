@@ -1,4 +1,4 @@
-open_spiel
+open_spiel==1.4
 sacred
 tensorflow==2.15.0
 torch

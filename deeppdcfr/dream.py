@@ -14,7 +14,7 @@ from deeppdcfr.utils import (
     play_n_games_against_random,
     play_n_poker_games_against_random,
 )
-from xdcfr.utils import SpielState
+from deeppdcfr.utils import SpielState
 import torch.optim as optim
 
 torch.set_printoptions(precision=4, sci_mode=False)
@@ -233,7 +233,7 @@ class DREAM(OSDeepCFR):
             ns.legal_actions_mask() if not ns.is_terminal() else None,
             ns.current_player(),
             int(ns.is_terminal()),
-            ns.returns()[0] / self.max_utility,  # 拟合玩家1的收益
+            ns.returns()[0] / self.max_utility, 
         )
 
         return value

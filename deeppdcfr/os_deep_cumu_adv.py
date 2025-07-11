@@ -141,8 +141,6 @@ class DeepCumuAdv:
             self.baseline_batch_size,
             self.baseline_network_train_steps,
             self.logger,
-            self.use_poker_model,
-            self.poker_round,
             self.regret_trainers,
             self.device,
         )
@@ -302,7 +300,7 @@ class DeepCumuAdv:
                 ns.legal_actions_mask() if not ns.is_terminal() else None,
                 ns.current_player(),
                 int(ns.is_terminal()),
-                ns.returns()[0] / self.max_utility,  # 拟合玩家1的收益
+                ns.returns()[0] / self.max_utility, 
             )
         return value
 

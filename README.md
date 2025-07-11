@@ -16,9 +16,9 @@ Run the following script to assess the performance of model-free neural algorith
 conda activate DeepPDCFR
 python scripts/run.py with configs/{algo_name}.yaml game_name={game_name} seed={seed} --force
 ```
-`algo_name` is the algorithm name chosen from `NFSP, QPG, RPG, OSDeepCFR, DeepCumuAdv, DeepDCFRPlus, DeepPDCFRPlus`.
+`algo_name` is the algorithm name chosen from `NFSP, QPG, RPG, OSDeepCFR, VRDeepDCFRPlus, VRDeepPDCFRPlus`.
 
-`game_name` is the testing game name chosen from `KuhnPoker, LeducPoker, LiarsDice5, LiarsDice6, GoofSpielImp5, GoofSpielImp6, GoofSpiel5, GoofSpiel6, Battleship_22_3, Battleship_32_3, FHP, HULH`
+`game_name` is the testing game name chosen from `KuhnPoker, LeducPoker, LiarsDice5, LiarsDice6, GoofSpielImp5, GoofSpielImp6, Battleship_22_3, Battleship_32_3, FHP`
 
 `seed` is the random seed chosen from `0, 1, 2, 3`.
     
