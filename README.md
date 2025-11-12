@@ -2,7 +2,7 @@
 
 > Deep (Predictive) Discounted Counterfactual Regret Minimization <br>
 > Hang Xu, Kai Li<sup>\#</sup>, Haobo Fu, Qiang Fu, Junliang Xing, Jian Cheng <br>
-> IJCAI 2024 (Oral)
+> AAAI 2026 (Oral)
 
 ## Install DeepPDCFR
 
