@@ -12,6 +12,8 @@ Install miniconda3 from [the official website](https://docs.conda.io/en/latest/m
 bash scripts/install.sh
 ```
 
+Download the file `flop_matrix.npy` from [this url](https://pan.quark.cn/s/1aaabf01c669), and put it into the folder `matrix`.
+
 ## Train DeepPDCFR
 
 Run the following script to assess the performance of model-free neural algorithms on testing games. The results are saved in the folder `logs`.
